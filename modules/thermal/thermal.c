@@ -43,6 +43,7 @@ static ssize_t get_temperatures(thermal_module_t *module, temperature_t *list, s
     size_t idx = 0;
     DIR *dir;
     struct dirent *de;
+    char sensor_name[MAX_LENGTH];
 
     /** Read all available temperatures from
      * /sys/class/thermal/thermal_zone[0-9]+/temp files.
@@ -64,18 +65,29 @@ static ssize_t get_temperatures(thermal_module_t *module, temperature_t *list, s
                 fclose(file);
                 continue;
             }
+            fclose(file);
+
+            snprintf(file_name, MAX_LENGTH, "%s/%s/type", TEMPERATURE_DIR, de->d_name);
+            file = fopen(file_name, "r");
+            if (file == NULL) {
+                continue;
+            }
+            if (1 != fscanf(file, "%s", sensor_name)) {
+                fclose(file);
+                continue;
+            }
+            fclose(file);
 
             if (list != NULL && idx < size) {
                 list[idx] = (temperature_t) {
-                    .name = UNKNOWN_LABEL,
                     .type = DEVICE_TEMPERATURE_UNKNOWN,
                     .current_value = temp,
                     .throttling_threshold = UNKNOWN_TEMPERATURE,
                     .shutdown_threshold = UNKNOWN_TEMPERATURE,
                     .vr_throttling_threshold = UNKNOWN_TEMPERATURE,
                 };
+                strcpy(list[idx].name, sensor_name);
             }
-            fclose(file);
             idx++;
         }
     }
@@ -93,6 +105,7 @@ static ssize_t get_cpu_usages(thermal_module_t *module, cpu_usage_t *list) {
     char file_name[MAX_LENGTH];
     FILE *cpu_file;
     FILE *file = fopen(CPU_USAGE_FILE, "r");
+    char cpu_name[MAX_LENGTH];
 
     if (file == NULL) {
         ALOGE("%s: failed to open: %s", __func__, strerror(errno));
@@ -142,15 +155,35 @@ static ssize_t get_cpu_usages(thermal_module_t *module, cpu_usage_t *list) {
             fclose(cpu_file);
         }
 
+        sprintf(cpu_name, "CPU%d", cpu_num);
         if (list != NULL) {
             list[size] = (cpu_usage_t) {
-                .name = CPU_LABEL,
                 .active = active,
                 .total = total,
                 .is_online = online
             };
+            strcpy(list[size].name, cpu_name);
         }
 
+        size++;
+    }
+    while(1){
+        snprintf(file_name, MAX_LENGTH, CPU_ONLINE_FILE_FORMAT, (int)size);
+        cpu_file = fopen(file_name, "r");
+        if (cpu_file == NULL) {
+            break;
+        }
+        fclose(cpu_file);
+        if (list != NULL) {
+            sprintf(cpu_name, "CPU%zu", size);
+            ALOGI("%s is offline, fill data!", cpu_name);
+            list[size] = (cpu_usage_t) {
+                .active = 0,
+                .total = 0,
+                .is_online = 0,
+            };
+            strcpy(list[size].name, cpu_name);
+        };
         size++;
     }
 

@@ -340,6 +340,11 @@ typedef uint8_t                         GnssConstellationType;
  */
 #define GNSS_CONFIGURATION_INTERFACE     "gnss_configuration"
 
+/**
+ * Name of the Unisoc Ext interface.
+ */
+#define GNSS_UNISOC_EXT_INTERFACE     "gnss_unisoc_ext_interface"
+
 /** Represents a location. */
 typedef struct {
     /** set to sizeof(GpsLocation) */
@@ -362,7 +367,53 @@ typedef struct {
     float           accuracy;
     /** Timestamp for the location fix. */
     GpsUtcTime      timestamp;
+    /** Represents vertical accuracy in meters. */
+    float           veraccuracy;
+    /** Represents speed accuracy in meters. */
+    float           speedaccuracy;
+    /** Represents bearing accuracy in meters. */
+    float           bearaccuracy;
 } GpsLocation;
+typedef uint16_t                         ElapsedTimeFlags;
+#define ELAPSED_TIME_FLAGS_NONE          (0)
+#define ELAPSED_TIME_FLAGS_HAS_NS        (1 << 0)
+#define ELAPSED_TIME_FLAGS_HAS_UNC_NS    (1 << 1)
+typedef struct{
+    /**
+     * A set of flags indicating the validity of each field in this data structure.
+     *
+     * Fields may have invalid information in them, if not marked as valid by the
+     * corresponding bit in flags.
+     */
+    ElapsedTimeFlags flags;
+
+    /**
+     * Estimate of the elapsed time since boot value for the corresponding event in nanoseconds.
+     */
+    uint64_t timestampNs;
+
+    /**
+     * Estimate of the relative precision of the alignment of this SystemClock
+     * timestamp, with the reported measurements in nanoseconds (68% confidence).
+     */
+    uint64_t timeUncertaintyNs;
+}ElapsedRealtime;
+
+typedef struct {
+	uint16_t gnssLocationFlags;
+	double latitude;
+	double longitude;
+	double altitude;
+	float speedMetersPerSec;
+	float bearingDegrees;
+	float horizontalAccuracyMeters;
+	float verticalAccuracyMeters;
+	float speedAccuracyMetersPerSecond;
+	float bearingAccuracyDegrees;
+	GpsUtcTime timestamp;
+	ElapsedRealtime elapsedRealtime;
+} GnssLocationEx;
+
 
 /** Represents the status. */
 typedef struct {
@@ -434,7 +485,7 @@ typedef struct {
      * GNSS_SV_FLAGS_* constants
      */
     GnssSvFlags flags;
-
+    float carrier_freq;
 } GnssSvInfo;
 
 /**
@@ -626,13 +677,13 @@ typedef struct {
     int   (*inject_time)(GpsUtcTime time, int64_t timeReference,
                          int uncertainty);
 
-    /**
+    /*
      * Injects current location from another location provider (typically cell
      * ID). Latitude and longitude are measured in degrees expected accuracy is
      * measured in meters
      */
     int  (*inject_location)(double latitude, double longitude, float accuracy);
-
+    int  (*inject_best_location)(GnssLocationEx* GnssLocation);
     /**
      * Specifies that the next call to start will not use the
      * information defined in the flags. GPS_DELETE_ALL is passed for
@@ -1708,6 +1759,7 @@ typedef struct {
      * observed noise floor" to "the noise RMS".
      */
     double snr_db;
+    double agcLevelDb;
 } GnssMeasurement;
 
 /**
@@ -1998,6 +2050,17 @@ typedef struct {
     void (*configuration_update) (const char* config_data, int32_t length);
 } GnssConfigurationInterface;
 
+/**
+* Unisoc Extended interface.
+*/
+typedef struct {
+  /** Set to sizeof(GnssUnisocExtInterface) */
+  size_t size;
+
+  /** bind network handle */
+  void (*network_handle_bind) (long int handle_val);
+
+} GnssUnisocExtInterface;
 __END_DECLS
 
 #endif /* ANDROID_INCLUDE_HARDWARE_GPS_H */

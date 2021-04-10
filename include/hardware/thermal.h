@@ -60,7 +60,7 @@ typedef struct {
    * Name of this temperature.
    * All temperatures of the same "type" must have a different "name".
    */
-  const char *name;
+  char name[50];
 
   /**
    * Current temperature in Celsius. If not available set by HAL to
@@ -100,7 +100,7 @@ typedef struct {
      * Name of this cooling device.
      * All cooling devices of the same "type" must have a different "name".
      */
-    const char *name;
+    char name[50];
 
     /**
      * Current cooling device value. Units depend on cooling device "type".
@@ -113,7 +113,7 @@ typedef struct {
      * Name of this CPU.
      * All CPUs must have a different "name".
      */
-    const char *name;
+    char name[50];
 
     /**
      * Active time since the last boot in ms.
